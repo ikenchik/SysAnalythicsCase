@@ -1,0 +1,152 @@
+openapi: 3.0.0
+info:
+  title: Payment Blocklist API
+  description: API для управления блокировками платежей клиентов
+  version: alpha 0.0.1
+
+servers:
+  - url: http://localhost:8080/internal/v1
+    description: Local Test Server
+
+security:
+  - bearerAuth: []
+
+paths:
+  /clients/{clientId}/payment-block:
+    post:
+      summary: Заблокировать платежи клиента
+      tags:
+        - Payment Blocks
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID клиента, которого блокируем
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/NewBlockRequest'
+      responses:
+        '201':
+          description: Клиент успешно заблокирован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockEntry'
+        '400':
+          description: Неверный запрос
+        '409':
+          description: Конфликт — клиент уже заблокирован
+    delete:
+      summary: Разблокировать платежи клиента (снять активную блокировку)
+      tags:
+        - Payment Blocks
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID клиента
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnblockRequest'
+      responses:
+        '200':
+          description: Блокировка успешно снята
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockEntry'
+        '404':
+          description: Активная блокировка для данного клиента не найдена
+    get:
+      summary: Проверить статус блокировки клиента
+      tags:
+        - Payment Blocks
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: ID клиента
+      responses:
+        '200':
+          description: Клиент заблокирован (возвращается объект активной блокировки)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlockEntry'
+        '404':
+          description: Клиент не заблокирован (активных блокировок нет)
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    NewBlockRequest:
+      type: object
+      required:
+        - blockType
+        - reasonDescription
+        - createdByUserId
+      properties:
+        blockType:
+          type: string
+          enum: [FRAUD, OPERATIONAL_HOLD]
+        reasonDescription:
+          type: string
+        createdByUserId:
+          type: string
+
+    UnblockRequest:
+      type: object
+      required:
+        - unblocked_by_user_id
+      properties:
+        unblocked_by_user_id:
+          type: string
+
+    BlockEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        clientId:
+          type: string
+          format: uuid
+        isActive:
+          type: boolean
+        blockType:
+          type: string
+          enum: [FRAUD, OPERATIONAL_HOLD]
+        reasonDescription:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+        unblockedAt:
+          type: string
+          format: date-time
+          nullable: true
+        unblockedByUserId:
+          type: string
+          nullable: true
